@@ -1,0 +1,122 @@
+version: "3.8"
+
+services:
+  traefik:
+    image: "traefik:v2.11"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--accesslog"
+      - "--log"
+    ports:
+      - "80:80"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  front:
+    image: bns-front
+    build:
+      context: Front
+      dockerfile: Dockerfile
+    working_dir: /app
+    entrypoint: ng serve -- --port 80
+    volumes:
+      - ./Front:/app
+    ports:
+      - "81:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.delibird-front.rule=!Headers(`Accept`, `application/json`)"
+      - "traefik.http.routers.delibird-front.entrypoints=web"
+      - "traefik.http.services.delibird-front.loadbalancer.server.port=80"
+
+  bet-service:
+    image: bns-bet-service
+    build:
+      context: BetService
+      dockerfile: Dockerfile
+    volumes:
+      - ./BetService:/var/www/
+    ports:
+      - "82:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.delibird-front.rule=Headers(`Accept`, `application/json`)"
+      - "traefik.http.routers.delibird-front.entrypoints=web"
+      - "traefik.http.services.delibird-front.loadbalancer.server.port=80"
+
+  bet-service-mysql:
+    image: mysql:5.7
+    volumes:
+      - db-bet-service:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: laravel
+      MYSQL_USER: laraveluser
+      MYSQL_PASSWORD: laravelsecret
+      MYSQL_ROOT_PASSWORD: rootpassword
+    labels:
+      - "traefik.enable=true"
+
+  # game-service:
+  #   image: bns-game-service
+  #   build:
+  #     context: GameService
+  #     dockerfile: Dockerfile
+  #   volumes:
+  #     - ./GameService:/var/www/
+  #   ports:
+  #     - "82:80"
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.delibird-front.rule=Headers(`Accept`, `application/json`)"
+  #     - "traefik.http.routers.delibird-front.entrypoints=web"
+  #     - "traefik.http.services.delibird-front.loadbalancer.server.port=80"
+
+  # game-service-mysql:
+  #   image: mysql:5.7
+  #   volumes:
+  #     - db-game-service:/var/lib/mysql
+  #   environment:
+  #     MYSQL_DATABASE: laravel
+  #     MYSQL_USER: laraveluser
+  #     MYSQL_PASSWORD: laravelsecret
+  #     MYSQL_ROOT_PASSWORD: rootpassword
+  #   labels:
+  #     - "traefik.enable=true"
+
+  # user-service:
+  #   image: bns-user-service
+  #   build:
+  #     context: UserService
+  #     dockerfile: Dockerfile
+  #   volumes:
+  #     - ./UserService:/var/www/
+  #   ports:
+  #     - "83:80"
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.delibird-front.rule=Headers(`Accept`, `application/json`)"
+  #     - "traefik.http.routers.delibird-front.entrypoints=web"
+  #     - "traefik.http.services.delibird-front.loadbalancer.server.port=80"
+
+  # user-service-mysql:
+  #   image: mysql:5.7
+  #   volumes:
+  #     - db-user-service:/var/lib/mysql
+  #   environment:
+  #     MYSQL_DATABASE: laravel
+  #     MYSQL_USER: laraveluser
+  #     MYSQL_PASSWORD: laravelsecret
+  #     MYSQL_ROOT_PASSWORD: rootpassword
+  #   labels:
+  #     - "traefik.enable=true"
+
+volumes:
+  db-bet-service:
+
+  db-game-service:
+
+  db-user-service:
